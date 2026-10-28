@@ -45,6 +45,22 @@ public class Entity { // or maybe DataStorage? It seems more like a data storage
         return this.id;
     }
 
+    public String getCarName() {
+        return this.carName;
+    }
+
+    public int getHP() {
+        return this.carHp;
+    }
+
+    public double getPrice() {
+        return this.carPrice;
+    }
+
+    public boolean getAvail() {
+        return this.carAvail;
+    }
+
     public byte[] intoByte_(String str, int len) {
         byte[] result = new byte[len];
         byte[] source = str.getBytes(StandardCharsets.UTF_8);
