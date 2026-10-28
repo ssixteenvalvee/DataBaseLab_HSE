@@ -297,7 +297,7 @@ public class FileDataBase {
        }
     }
 
-    public ArrayList<Entity> deleteByVal(Object value) throws IOException {
+    public ArrayList<Entity> deleteByVal(Field f, Object value) throws IOException {
         /*
             min O(n) potomuchto a kak eshe epta?
             -> take the val (bool/int/double/string)
