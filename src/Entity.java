@@ -33,6 +33,10 @@ public class Entity { // or maybe DataStorage? It seems more like a data storage
 
     public Entity() {}
 
+    public int getId() {
+        return this.id;
+    }
+
     public byte[] intoByte_(String str, int len) {
         byte[] result = new byte[len];
         byte[] source = str.getBytes(StandardCharsets.UTF_8);
