@@ -4,10 +4,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 /*
 DATA HEADER:
@@ -33,10 +31,6 @@ public class FileDataBase {
     public final static int IDX_COUNTPTR  = 8;
 
     public boolean IS_OPENED = false;
-
-    public enum Field {
-        ID, NAME, HP, PRICE, AVAILABLE
-    }
 
     private HashMap<Integer, Long> map;
     private RandomAccessFile dataFile;
@@ -317,94 +311,15 @@ public class FileDataBase {
         return deleted;
     }
 
-    public Entity seekByID(int id) throws IOException {
-        /*
-        if opened -> good
-        if given key in map -> good
-        take offset, which attached to the key
-        seek by this offset a byte block
-        read it into entity
-        give it to the whom who asked
-        */
-        if (!IS_OPENED) {
-            throw new IllegalStateException("Data base is not opened");
-        }
-        if (this.map.containsKey(id)) {
-            long offset = this.map.get(id);
-            this.dataFile.seek(offset);
-            Entity obj = new Entity();
-            obj.readFrom(this.dataFile, offset);
-            this.dataFile.seek(this.dataFile.length());
-            return obj;
-        } else {
-            throw new IllegalArgumentException("[FILEDB] seekById (EXCEPTION): No such id");
-        }
+    public void seekByID() { // by key/by value. If value - all matches. show at the screen the result.
+
     }
 
-    public ArrayList<Entity> seekByValue(Field f, Object value) throws IOException {
+    public void seekByValue() {
 
-        /*
-        IF OPEN - good
-        then get keys
-        then go through this keys and take a position in file
-        then go to the position and tell entity to read RECORD_SIZE bytes of information
-        then, in CASE if front asked for id, CASE ID
-            if it matches (equals() or ==) -> good
-            store it to the "all matches box"
-                else just skip it
-        then give the box with all matches to the one who asked (frontend)
-        */
-
-        if (!IS_OPENED) {
-            throw new IllegalStateException("Data base is not opened");
-        }
-        Set<Integer> keys = this.map.keySet();
-        ArrayList<Entity> matches = new ArrayList<>();
-        for (int k : keys) {
-            long offset = this.map.get(k);
-            boolean match = false;
-            Entity obj = new Entity();
-            this.dataFile.seek(offset);
-            obj.readFrom(this.dataFile, offset);
-
-            switch(f) {
-                case ID:
-                    if (obj.getId() == (Integer) value) {
-                        match = true;
-                        break;
-                    }
-                case NAME:
-                    if (obj.getCarName().equals(value)) {
-                        match = true;
-                        break;
-                    }
-                case HP:
-                    if (obj.getHP() == (Integer) value) {
-                        match = true;
-                        break;
-                    }
-                case PRICE:
-                    if (obj.getPrice() == (Double) value) {
-                        match = true;
-                        break;
-                    }
-                case AVAILABLE:
-                    if (obj.getAvail()) {
-                        match = true;
-                        break;
-                    }
-                default:
-                    throw new IllegalArgumentException("[FILEDB] seekByValue: No such Entity field");
-            }
-            if (match) {
-                matches.add(obj);
-            }
-        }
-        this.dataFile.seek(this.dataFile.length());
-        return matches;
     }
 
-    public void edit() {
+    public void edit() { // 
 
     }
 
