@@ -11,6 +11,14 @@ public class Entity { // or maybe DataStorage? It seems more like a data storage
     public final static int FLAG_SIZE = 1;    // summary 82 with utility 'deleted' flag;
     public final static int LAYOUTVER = 1; // version of layout: id name hp price avail deleted.
 
+    // in case of reading a block of data: readX(offset + ptr); if offset at the beginning of data block (0/82);
+    public final static int SEEK_ID = 0;
+    public final static int SEEK_NAME = 4;
+    public final static int SEEK_HP = 68;
+    public final static int SEEK_PRICE = 72;
+    public final static int SEEK_AVAIL = 80;
+    public final static int SEEK_DEL = 81;
+
     private int id;
     private String carName;
     private int carHp;

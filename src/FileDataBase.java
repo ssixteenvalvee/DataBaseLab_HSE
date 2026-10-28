@@ -1,3 +1,4 @@
+import com.sun.nio.sctp.IllegalReceiveException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -271,10 +272,23 @@ public class FileDataBase {
         this.dataFile.writeInt(this.maxId);
     }
 
-    public void deleteByID(int id) { // delete by value: it may be an id and value. In the 2nd case - delete all matching values
+    public void deleteByID(int id) throws IOException { // delete by value: it may be an id and value. In the 2nd case - delete all matching values
         /*
-        Seek for id in HashMap at first and make it 
+        Seek for id in HashMap at first and make it non-living
+        map.remove!!
         */
+       if (!IS_OPENED) {
+        throw new IllegalStateException("Data base is not opened");
+       }
+       if (!this.map.containsKey(id)) {
+            throw new IllegalReceiveException("No such id");
+       } else {
+        long offset = this.map.get(id); // gives offset/position
+        this.dataFile.seek(offset + Entity.SEEK_DEL); // finds del flag
+        this.dataFile.writeBoolean(true); // makes it deleted (logically)
+
+        this.map.remove(id);
+       }
     }
 
     public void deleteByVal() {
