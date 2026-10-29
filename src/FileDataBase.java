@@ -38,11 +38,11 @@ public class FileDataBase {
         ID, NAME, HP, PRICE, AVAILABLE
     }
 
-    private HashMap<Integer, Long> map;
-    private RandomAccessFile dataFile;
-    private RandomAccessFile hashFile;
-    private String dataPath;
-    private String mapPath;
+    private final HashMap<Integer, Long> map;
+    private final RandomAccessFile dataFile;
+    private final RandomAccessFile hashFile;
+    private final String dataPath;
+    private final String mapPath;
 
     public int maxId;
 
@@ -189,7 +189,7 @@ public class FileDataBase {
     }
 
         public void vacuum() throws IOException {
-        if (!IS_OPENED) throw new IllegalStateException("Data Base is not opened");
+        if (!IS_OPENED) throw new IllegalArgumentException("Data Base is not opened");
 
         File marker  = new File(dataPath + ".vacuum");
         File dataBak = new File(dataPath + ".bak");
@@ -284,7 +284,7 @@ public class FileDataBase {
         map.remove!!
         */
        if (!IS_OPENED) {
-        throw new IllegalStateException("Data base is not opened");
+        throw new IllegalArgumentException("Data base is not opened");
        }
        if (!this.map.containsKey(id)) {
             throw new IllegalReceiveException("No such id");
@@ -308,7 +308,7 @@ public class FileDataBase {
             delete all in order
         */
         if (!IS_OPENED) {
-            throw new IllegalStateException("Data base is not opened");
+            throw new IllegalArgumentException("Data base is not opened");
         }
         ArrayList<Entity> deleted = seekByValue(f, value);
         for (Entity obj : deleted) {
@@ -327,17 +327,18 @@ public class FileDataBase {
         give it to the whom who asked
         */
         if (!IS_OPENED) {
-            throw new IllegalStateException("Data base is not opened");
+            throw new IllegalArgumentException("Data base is not opened");
         }
+        long offset;
         if (this.map.containsKey(id)) {
-            long offset = this.map.get(id);
+            offset = this.map.get(id);
             this.dataFile.seek(offset);
             Entity obj = new Entity();
             obj.readFrom(this.dataFile, offset);
             this.dataFile.seek(this.dataFile.length());
             return obj;
         } else {
-            throw new IllegalArgumentException("[FILEDB] seekById (EXCEPTION): No such id");
+            throw new IllegalArgumentException("[FILEDB] seekById (EXCEPTION): No such id " + id);
         }
     }
 
@@ -356,7 +357,7 @@ public class FileDataBase {
         */
 
         if (!IS_OPENED) {
-            throw new IllegalStateException("Data base is not opened");
+            throw new IllegalArgumentException("Data base is not opened");
         }
         Set<Integer> keys = this.map.keySet();
         ArrayList<Entity> matches = new ArrayList<>();
@@ -371,13 +372,13 @@ public class FileDataBase {
                 case ID:
                     if (obj.getId() == (Integer) value) {
                         match = true;
-                        break;
                     }
+                    break;
                 case NAME:
                     if (obj.getCarName().equals(value)) {
                         match = true;
-                        break;
                     }
+                    break;
                 case HP:
                     if (obj.getHP() == (Integer) value) {
                         match = true;
@@ -386,15 +387,15 @@ public class FileDataBase {
                 case PRICE:
                     if (obj.getPrice() == (Double) value) {
                         match = true;
-                        break;
                     }
+                    break;
                 case AVAILABLE:
-                    if (obj.getAvail()) {
+                    if (obj.getAvail() == (boolean) value) {
                         match = true;
-                        break;
                     }
+                    break;
                 default:
-                    throw new IllegalArgumentException("[FILEDB] seekByValue: No such Entity field");
+                    throw new IllegalArgumentException("[FILEDB] seekByValue: No such Entity field: " + f);
             }
             if (match) {
                 matches.add(obj);
@@ -404,8 +405,33 @@ public class FileDataBase {
         return matches;
     }
 
-    public void edit() {
+    public void edit(int id, Field f, Object newValue) throws IOException {
+        /*
+        1. if opened - good
+        2. first and foremost, we need to get a field which have to be edited
+        3. secondly, we have to get a value that will be written into the field
+        4. need to seekById for fast editing, because we rewrite only one recording in a certain field. Otherwise, it would do a lot of extra job.
+        5. DO NOT rewrite the id! It is Utility-only field with opportunity for user to seek by it, but not editing.
+        */
+       if (!IS_OPENED) {
+            throw new IllegalArgumentException("Data base is not opened");
+            }
+        Long offset = this.map.get(id);
+        if (offset == null) {
+            throw new IllegalArgumentException("[FILEDB] edit: No such id: " + id);
+            }
+        Entity obj = new Entity();
+        obj.readFrom(this.dataFile, offset);
 
+        switch (f) {
+        case NAME      -> obj.setCarName((String) newValue);
+        case HP        -> obj.setHP((Integer) newValue);
+        case PRICE     -> obj.setPrice((Double) newValue);
+        case AVAILABLE -> obj.setAvail((Boolean) newValue);
+        case ID        -> throw new IllegalArgumentException("[FILEDB] edit: ID is not editable");
+        }
+        dataFile.seek(offset);
+        obj.writeTo(dataFile);
     }
 
     public void createBackupFile() {

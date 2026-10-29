@@ -29,7 +29,7 @@ public class Entity { // or maybe DataStorage? It seems more like a data storage
 
     public Entity(int idx, String name, int hp, double price, boolean available) {
         if (name.getBytes(StandardCharsets.UTF_8).length > NAME_SIZE) {
-            throw new IllegalArgumentException("[ENTITY]: (EXCEPTION) TOO LONG CAR NAME GIVEN");
+            throw new IllegalArgumentException("[ENTITY] constructor: Too long car name given");
         } 
         this.carName = name;
         this.carHp = hp;
@@ -38,7 +38,7 @@ public class Entity { // or maybe DataStorage? It seems more like a data storage
         this.id = idx;
         this.deleted = false;
     }
-
+    // get
     public Entity() {}
 
     public int getId() {
@@ -59,6 +59,24 @@ public class Entity { // or maybe DataStorage? It seems more like a data storage
 
     public boolean getAvail() {
         return this.carAvail;
+    }
+    
+    // set
+
+    public void setCarName(String name) {
+        this.carName = name;
+    }
+
+    public void setHP(int carHP) {
+        this.carHp = carHP;
+    }
+
+    public void setPrice(double price) {
+        this.carPrice = price;
+    }
+
+    public void setAvail(boolean avail) {
+        this.carAvail = avail;
     }
 
     public byte[] intoByte_(String str, int len) {
