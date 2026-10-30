@@ -1,10 +1,11 @@
-import com.sun.nio.sctp.IllegalReceiveException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -39,10 +40,11 @@ public class FileDataBase {
     }
 
     private final HashMap<Integer, Long> map;
-    private final RandomAccessFile dataFile;
-    private final RandomAccessFile hashFile;
+    private RandomAccessFile dataFile;
+    private RandomAccessFile hashFile;
     private final String dataPath;
     private final String mapPath;
+    private final String backupPath;
 
     public int maxId;
 
@@ -53,6 +55,7 @@ public class FileDataBase {
         hashFile = new RandomAccessFile(this.mapPath, "rw");
         map = new HashMap<>();
         this.maxId = 0;
+        backupPath = "/backups";
     }
     
     // createX - initializing method
@@ -113,7 +116,7 @@ public class FileDataBase {
         if (IS_OPENED) {
             throw new IOException("Data Base is built");
         }
-        this.dataFile.seek(SOFDATA_HEADER - 4);
+        this.dataFile.seek(RECSIZEPTR);
         int step = this.dataFile.readInt(); // RECORD_COUNT
         if (step != Entity.RECORD_SIZE) {throw new IOException("Can not rebuild Data Base: Can not work with file");}
         this.map.clear();
@@ -135,10 +138,26 @@ public class FileDataBase {
         if (IS_OPENED) {
             throw new IOException("CAN NOT OPEN FILE SINCE IT IS ALREADY OPENED");
         }
+
+        File marker = new File(this.dataPath + ".vacuum");
+        File bak = new File(this.dataPath + ".bak");
+        if (marker.exists()) {
+            System.out.println("[FILEDB]: interfered vacuum op found. Recovering...");
+            this.dataFile.close();
+            this.hashFile.close();
+            copyFileWithSync(bak, new File(dataPath));
+            new File(mapPath).delete();
+            this.dataFile = new RandomAccessFile(dataPath, "rw");
+            this.hashFile = new RandomAccessFile(mapPath, "rw");
+            marker.delete();
+            bak.delete();
+        }
+
         if (dataFile.length() == 0) {
             createFile();
             this.hashFile.setLength(0);
-        }
+        }this.dataFile = new RandomAccessFile(this.dataPath, "rw");
+        this.hashFile = new RandomAccessFile(this.mapPath, "rw");
         dataFile.seek(0);
         hashFile.seek(0);
         int datHex = dataFile.readInt();
@@ -248,10 +267,11 @@ public class FileDataBase {
         } catch (IOException e) {
             System.err.println("[FILEDB]: Could not save map on closure, something happened: " + e); // risky
             return;
-        }
-        this.dataFile.close();
+        } finally {
+            this.dataFile.close();
         this.hashFile.close();
         IS_OPENED = false;
+        }
     }
 
     public void add(String name, int hp, double price, boolean available) throws IOException { // check if unique by id
@@ -260,6 +280,7 @@ public class FileDataBase {
         }
         long offset = dataFile.length();
         int id = ++this.maxId;
+        dataFile.seek(offset);
         Entity obj = new Entity(id, name, hp, price, available);
         try {
             obj.writeTo(dataFile);
@@ -276,6 +297,8 @@ public class FileDataBase {
 
         this.dataFile.seek(MAXIDPTR);
         this.dataFile.writeInt(this.maxId);
+
+        this.dataFile.seek(this.dataFile.length()); // !!!
     }
 
     public void deleteByID(int id) throws IOException { // delete by value: it may be an id and value. In the 2nd case - delete all matching values
@@ -287,7 +310,7 @@ public class FileDataBase {
         throw new IllegalArgumentException("Data base is not opened");
        }
        if (!this.map.containsKey(id)) {
-            throw new IllegalReceiveException("No such id");
+            throw new IllegalArgumentException("[FILEDB] deletebyID: No such id");
        } else {
         long offset = this.map.get(id); // gives offset/position
         this.dataFile.seek(offset + Entity.SEEK_DEL); // finds del flag
@@ -382,8 +405,8 @@ public class FileDataBase {
                 case HP:
                     if (obj.getHP() == (Integer) value) {
                         match = true;
-                        break;
                     }
+                    break;
                 case PRICE:
                     if (obj.getPrice() == (Double) value) {
                         match = true;
@@ -434,11 +457,67 @@ public class FileDataBase {
         obj.writeTo(dataFile);
     }
 
-    public void createBackupFile() {
+    public String createBackupFile(String baseBackupDir) throws IOException {
+        if (!IS_OPENED) {
+            throw new IllegalStateException("Data base is not opened");
+        }
 
+        String timestamp = new SimpleDateFormat("yyyy-MM-dd__HH-mm-ss").format(new Date());
+        File backupDir = new File(baseBackupDir, timestamp);
+        
+        if (!backupDir.exists()) {
+            if (!backupDir.mkdirs()) {
+                throw new IOException("[FILEDB] 'createBackupFile': Could not create backup directory: " + backupDir.getAbsolutePath());
+            }
+        }
+
+        File dataBackup = new File(backupDir, new File(dataPath).getName());
+        File idxBackup  = new File(backupDir, new File(mapPath).getName());
+
+        File Data = new File(this.dataPath);
+        File Idx = new File(this.mapPath);
+
+        copyFileWithSync(Data, dataBackup); // source -> destination
+        copyFileWithSync(Idx, idxBackup);
+
+        System.out.println("[FILEDB] Backup created at: " + backupDir.getAbsolutePath());
+        
+        return backupDir.getAbsolutePath(); 
     }
 
-    public void recoverFromBackup() {
+    public void createBackupFile() throws IOException {
+        createBackupFile("backups");
+    }
+
+    public void recoverFromBackup(String backupDirPath) throws IOException {
+        File backupDir = new File(backupDirPath);
+        File dataBackup = new File(backupDir, new File(dataPath).getName());
+        File idxBackup  = new File(backupDir, new File(mapPath).getName());
+
+        if (!dataBackup.exists() || !idxBackup.exists()) {
+            throw new IOException("[FILEDDB] required .dat and .idx to do a backup");
+        }
+
+        this.dataFile.close();
+        this.hashFile.close();
+        IS_OPENED = false;
+
+        File Data = new File(this.dataPath);
+        File Idx = new File(this.mapPath);
+        try {
+            copyFileWithSync(dataBackup, Data); // source -> destination
+            copyFileWithSync(idxBackup, Idx);
+        } finally { // new files will open in any case
+            this.dataFile = new RandomAccessFile(this.dataPath, "rw");
+            this.hashFile = new RandomAccessFile(this.mapPath, "rw");
+        }
+
+        this.map.clear();
+        openDataBase();
+        System.out.println("[FILEDB]: Data Base is successfully recovered using this backup: " + backupDirPath);
+    }
+
+    public void show() {
 
     }
 
