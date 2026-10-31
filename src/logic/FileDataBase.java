@@ -1,16 +1,8 @@
 package logic;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /*
 DATA HEADER:
@@ -158,8 +150,7 @@ public class FileDataBase {
         if (dataFile.length() == 0) {
             createFile();
             this.hashFile.setLength(0);
-        }this.dataFile = new RandomAccessFile(this.dataPath, "rw");
-        this.hashFile = new RandomAccessFile(this.mapPath, "rw");
+        }
         dataFile.seek(0);
         hashFile.seek(0);
         int datHex = dataFile.readInt();
@@ -324,7 +315,6 @@ public class FileDataBase {
 
     public ArrayList<Entity> deleteByVal(Field f, Object value) throws IOException {
         /*
-            min O(n) potomuchto a kak eshe epta?
             -> take the val (bool/int/double/string)
 
             if opened - good
@@ -400,7 +390,7 @@ public class FileDataBase {
                     }
                     break;
                 case NAME:
-                    if (obj.getCarName().equals(value)) {
+                    if (obj.getCarName().trim().equals(value)) {
                         match = true;
                     }
                     break;

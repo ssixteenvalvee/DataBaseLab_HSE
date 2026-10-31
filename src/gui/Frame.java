@@ -29,6 +29,7 @@ public class Frame extends JFrame {
                 super.windowClosing(e);
                 try {
                     if (db != null && db.IS_OPENED) {
+                        db.vacuum();
                         db.closeDataBase();
                     }
                     System.exit(0);
@@ -57,13 +58,15 @@ public class Frame extends JFrame {
         JButton vacuumBtn = new JButton("Сжать БД (Vacuum)");
         JButton backupBtn = new JButton("Бэкап");
         JButton backupLoadBtn =  new JButton("Загрузить Бэкап");
+        JButton deleteAllFound = new JButton("Удалить найденные");
         toolBar.add(addBtn);
         toolBar.add(editBtn);
         toolBar.add(deleteBtn);
         toolBar.addSeparator();
-        toolBar.add(vacuumBtn);
+        // toolBar.add(vacuumBtn);
         toolBar.add(backupBtn);
         toolBar.add(backupLoadBtn);
+        toolBar.add(deleteAllFound);
 
         // taBle itself
         String[] columns = {"ID", "Название", "Л.С.", "Цена", "В наличии"};
@@ -152,6 +155,31 @@ public class Frame extends JFrame {
             }
         });
 
+        deleteAllFound.addActionListener(e -> {
+            FileDataBase.Field field = (FileDataBase.Field) fieldCombo.getSelectedItem();
+            String val = searchField.getText().trim();
+
+            if (val.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Требуется ввести данные для поиска");
+                return;
+            }
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Вы уверены, что хотите удалить ВСЕ записи, что: " + field + " = " + val + "?",
+                    "Удаление", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    Object value = parseValue(field, val); // Твой метод парсинга строки в тип
+                    ArrayList<Entity> deleted = db.deleteByVal(field, value);
+
+                    JOptionPane.showMessageDialog(this, "Удалено записей: " + deleted.size());
+                    refreshTable();
+                } catch (Exception ex) {
+                    showError("Ошибка при удалении", ex);
+                }
+            }
+        });
+
         // vacuum
         vacuumBtn.addActionListener(e -> {
             try {
@@ -166,6 +194,7 @@ public class Frame extends JFrame {
         // backup
         backupBtn.addActionListener(e -> {
             try {
+                db.saveMap();
                 String path = db.createBackupFile(BACKUPS_DIR);
                 JOptionPane.showMessageDialog(this, "Бэкап создан:\n" + path);
             } catch (IOException ex) {
@@ -202,7 +231,7 @@ public class Frame extends JFrame {
         // find
         searchBtn.addActionListener(e -> {
             FileDataBase.Field field = (FileDataBase.Field) fieldCombo.getSelectedItem();
-            String valStr = searchField.getText().trim();
+            String valStr = searchField.getText();
             if (valStr.isEmpty()) { refreshTable(); return; }
 
             try {
@@ -255,5 +284,16 @@ public class Frame extends JFrame {
     private void showError(String msg, Exception e) {
         String fullMsg = e == null ? msg : msg + ": " + e.getMessage();
         JOptionPane.showMessageDialog(this, fullMsg, "Ошибка", JOptionPane.ERROR_MESSAGE);
+    }
+
+    public Object parseValue(FileDataBase.Field f, String value) {
+        return switch (f) {
+            case NAME -> value;
+            case HP -> Integer.parseInt(value);
+            case PRICE -> Double.parseDouble(value);
+            case AVAILABLE -> Boolean.parseBoolean(value);
+            case ID -> Integer.parseInt(value);
+            default -> null;
+        };
     }
 }
