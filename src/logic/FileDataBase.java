@@ -1,3 +1,5 @@
+package logic;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -60,7 +62,7 @@ public class FileDataBase {
     
     // createX - initializing method
     public void createFile() throws IOException {
-        if (this.dataFile.length() != 0 || IS_OPENED == true) {
+        if (this.dataFile.length() != 0 || IS_OPENED) {
             throw new IOException();
         }
         this.dataFile.seek(0);
@@ -169,7 +171,7 @@ public class FileDataBase {
         }
         if (datHex != DAT_HEX) {throw new IOException("NOT APPROPRIATE FILE");}
         if (datLayout != LAYOUT) {throw new IOException("NOT APPROPRIATE LAYOUT");}
-        if ((long)recordCount * (long)Entity.RECORD_SIZE + (long)SOFDATA_HEADER != dataFile.length()) {throw new IOException("THE FILE IS INCOMPLETE, TRY TO BACKUP");}
+        if ((long)recordCount * (long) Entity.RECORD_SIZE + (long)SOFDATA_HEADER != dataFile.length()) {throw new IOException("THE FILE IS INCOMPLETE, TRY TO BACKUP");}
         if (readSize != Entity.RECORD_SIZE) {throw new IOException("CAN NOT WORK WITH FILE");}
 
         dataFile.seek(MAXIDPTR);
@@ -370,7 +372,7 @@ public class FileDataBase {
         /*
         IF OPEN - good
         then get keys
-        then go through this keys and take a position in file
+        then go through these keys and take a position in file
         then go to the position and tell entity to read RECORD_SIZE bytes of information
         then, in CASE if front asked for id, CASE ID
             if it matches (equals() or ==) -> good
@@ -515,6 +517,17 @@ public class FileDataBase {
         this.map.clear();
         openDataBase();
         System.out.println("[FILEDB]: Data Base is successfully recovered using this backup: " + backupDirPath);
+    }
+
+    public ArrayList<Entity> getAll() throws IOException {
+        if (!IS_OPENED) throw new IllegalStateException("Data Base is not opened");
+        ArrayList<Entity> all = new ArrayList<>();
+        for (long offset : map.values()) {
+            Entity obj = new Entity();
+            obj.readFrom(dataFile, offset);
+            all.add(obj);
+        }
+        return all;
     }
 
     public void show() {
