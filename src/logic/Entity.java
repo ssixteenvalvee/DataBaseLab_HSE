@@ -66,7 +66,7 @@ public class Entity { // or maybe DataStorage? It seems more like a data storage
     // set
 
     public void setCarName(String name) {
-        this.carName = name;
+        this.carName = name.trim();
     }
 
     public void setHP(int carHP) {

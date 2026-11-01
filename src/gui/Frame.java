@@ -27,17 +27,20 @@ public class Frame extends JFrame {
             @Override
             public void windowClosing(WindowEvent e) {
                 super.windowClosing(e);
-                try {
                     if (db != null && db.IS_OPENED) {
-                        db.vacuum();
-                        db.closeDataBase();
+                        try {
+                            db.vacuum();
+                        } catch (IOException ex) {
+                            System.err.println("Vacuum failed: " + ex.getMessage());
+                        }
+
+                        try {
+                            db.closeDataBase();
+                        } catch (IOException ex) {
+                            System.err.println("Close failed: " + ex.getMessage());
+                        }
                     }
-                    System.exit(0);
-                } catch (IOException ex) {
-                    System.err.println(ex.getMessage());
-                    JOptionPane.showMessageDialog(Frame.this,
-                            "Something went wrong while closing: " + ex);
-                }
+                System.exit(0);
             }
         });
         // create db
@@ -59,6 +62,8 @@ public class Frame extends JFrame {
         JButton backupBtn = new JButton("Бэкап");
         JButton backupLoadBtn =  new JButton("Загрузить Бэкап");
         JButton deleteAllFound = new JButton("Удалить найденные");
+        JButton flushBtn = new JButton("Очистить");
+        JButton deleteDataBaseBtn = new JButton("Удалить БД");
         toolBar.add(addBtn);
         toolBar.add(editBtn);
         toolBar.add(deleteBtn);
@@ -67,6 +72,8 @@ public class Frame extends JFrame {
         toolBar.add(backupBtn);
         toolBar.add(backupLoadBtn);
         toolBar.add(deleteAllFound);
+        toolBar.add(flushBtn);
+        toolBar.add(deleteDataBaseBtn);
 
         // taBle itself
         String[] columns = {"ID", "Название", "Л.С.", "Цена", "В наличии"};
@@ -102,6 +109,9 @@ public class Frame extends JFrame {
 
         // add
         addBtn.addActionListener(e -> {
+            if (!db.IS_OPENED) {
+                createDB();
+            }
             Dialogue dialog = new Dialogue(this, null);
             dialog.setVisible(true);
             Entity newEnt = dialog.getResult();
@@ -252,6 +262,39 @@ public class Frame extends JFrame {
             }
         });
 
+        flushBtn.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Данное действие полностью очистит все записи. Вы уверены?",
+                    "Очистить", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    db.flush();
+                } catch (IOException ex) {
+                    System.err.println(ex.getMessage());
+                    JOptionPane.showMessageDialog(this,
+                            "Что-то пошло не так при очистке: " + ex.getMessage());
+                } finally {
+                    refreshTable();
+                }
+            }
+        });
+
+        deleteDataBaseBtn.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Данное действие полностью удалит Базу Данных. Вы уверены?",
+                    "Очистить БД", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    db.deleteFiles();
+                    tableModel.setRowCount(0);
+                } catch (IOException ex) {
+                    System.err.println(ex.getMessage());
+                    JOptionPane.showMessageDialog(this,
+                            "Что-то пошло не так при удалении БД: " + ex.getMessage());
+                }
+            }
+        });
+
         resetBtn.addActionListener(e -> {
             searchField.setText("");
             refreshTable();
@@ -295,5 +338,14 @@ public class Frame extends JFrame {
             case ID -> Integer.parseInt(value);
             default -> null;
         };
+    }
+
+    public void createDB() {
+        try {
+            db = new FileDataBase("data.idx", "data.dat");
+            db.openDataBase();
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Ошибка открытия БД: " + e.getMessage());
+        }
     }
 }

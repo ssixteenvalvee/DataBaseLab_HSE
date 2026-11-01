@@ -32,7 +32,7 @@ public class Dialogue extends JDialog {
         add(availCheck);
 
         if (toEdit != null) {
-            // nameField.setText(toEdit.getCarName());
+            nameField.setText(toEdit.getCarName().trim());
             hpField.setText(String.valueOf(toEdit.getHP()));
             priceField.setText(String.valueOf(toEdit.getPrice()));
             availCheck.setSelected(toEdit.getAvail());

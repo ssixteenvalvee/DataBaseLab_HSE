@@ -1,5 +1,9 @@
 package logic;
 
+//import org.apache.poi.ss.usermodel.*;
+//import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.FileInputStream;
+
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -38,7 +42,6 @@ public class FileDataBase {
     private RandomAccessFile hashFile;
     private final String dataPath;
     private final String mapPath;
-    private final String backupPath;
 
     public int maxId;
 
@@ -49,7 +52,6 @@ public class FileDataBase {
         hashFile = new RandomAccessFile(this.mapPath, "rw");
         map = new HashMap<>();
         this.maxId = 0;
-        backupPath = "/backups";
     }
     
     // createX - initializing method
@@ -451,7 +453,7 @@ public class FileDataBase {
 
     public String createBackupFile(String baseBackupDir) throws IOException {
         if (!IS_OPENED) {
-            throw new IllegalStateException("Data base is not opened");
+            throw new IllegalArgumentException("Data base is not opened");
         }
 
         String timestamp = new SimpleDateFormat("yyyy-MM-dd__HH-mm-ss").format(new Date());
@@ -504,8 +506,14 @@ public class FileDataBase {
             this.hashFile = new RandomAccessFile(this.mapPath, "rw");
         }
 
+        new File(this.dataPath + ".vacuum").delete();
+        new File(this.dataPath + ".bak").delete();
+
         this.map.clear();
-        openDataBase();
+        dataFile.seek(MAXIDPTR);
+        this.maxId = dataFile.readInt();
+        loadMap();
+        IS_OPENED = true;
         System.out.println("[FILEDB]: Data Base is successfully recovered using this backup: " + backupDirPath);
     }
 
@@ -520,8 +528,59 @@ public class FileDataBase {
         return all;
     }
 
-    public void show() {
+    public void flush() throws IOException {
+        if (!IS_OPENED) {
+            throw new IllegalArgumentException("Data base is not opened");
+        }
+        this.dataFile.setLength(0);
 
+        this.dataFile.seek(0);
+        this.dataFile.writeInt(DAT_HEX);
+        this.dataFile.writeInt(LAYOUT);
+        this.dataFile.writeInt(0);
+        this.dataFile.writeInt(Entity.RECORD_SIZE);
+        this.dataFile.writeInt(0);
+
+        this.hashFile.setLength(0);
+        this.hashFile.seek(0);
+        this.hashFile.writeInt(IDX_HEX);
+        this.hashFile.writeInt(LAYOUT);
+        this.hashFile.writeInt(0);
+
+        new File(this.dataPath + ".vacuum").delete();
+        new File(this.dataPath + ".bak").delete();
+
+        this.map.clear();
+        maxId = 0;
+    }
+
+    public void deleteFiles() throws IOException {
+        if (!IS_OPENED) {
+            throw new IllegalArgumentException("Data base is not opened");
+        }
+
+        this.dataFile.close();
+        this.hashFile.close();
+        boolean one = false, two = false;
+        if (new File(this.dataPath).exists()) {
+            one = new File(this.dataPath).delete();
+        }
+
+        if (new File(this.mapPath).exists()) {
+            two = new File(this.mapPath).delete();
+        }
+
+        if (one && two) {
+            IS_OPENED = false;
+            System.out.println("[FILEDB] deleteFiles: Success");
+            new File(this.dataPath + ".vacuum").delete();
+            new File(this.dataPath + ".bak").delete();
+            maxId = 0;
+            map.clear();
+            return;
+        } else {
+            throw new IOException("Can not delete files");
+        }
     }
 
     public void importFrom() {
