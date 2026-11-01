@@ -1,7 +1,7 @@
 package logic;
 
-//import org.apache.poi.ss.usermodel.*;
-//import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import java.io.FileInputStream;
 
 import java.io.*;
@@ -514,7 +514,7 @@ public class FileDataBase {
         this.maxId = dataFile.readInt();
         loadMap();
         IS_OPENED = true;
-        System.out.println("[FILEDB]: Data Base is successfully recovered using this backup: " + backupDirPath);
+        System.out.println("[FILEDB]: Data Base is successfully recovered with this backup: " + backupDirPath);
     }
 
     public ArrayList<Entity> getAll() throws IOException {
@@ -572,7 +572,7 @@ public class FileDataBase {
 
         if (one && two) {
             IS_OPENED = false;
-            System.out.println("[FILEDB] deleteFiles: Success");
+            System.out.println("[FILEDB] deleteFiles OK.");
             new File(this.dataPath + ".vacuum").delete();
             new File(this.dataPath + ".bak").delete();
             maxId = 0;
@@ -583,7 +583,52 @@ public class FileDataBase {
         }
     }
 
-    public void importFrom() {
+    public int importFromExcel(String excelFilePath) throws IOException {
+        if (!IS_OPENED) {
+            throw new IllegalStateException("Data base is not opened");
+        }
+        int importCnt = 0;
 
+        try (FileInputStream fis = new FileInputStream(excelFilePath);
+             Workbook wb = new XSSFWorkbook(fis)) {
+
+            Sheet sheet = wb.getSheetAt(0);
+            
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                try {
+                    //Name, HP, price, Avail
+                    Cell nameCell = row.getCell(1);
+                    String name = (nameCell != null) ? nameCell.getStringCellValue() : "UNK";
+
+                    Cell hpCell = row.getCell(2);
+                    int hp = (hpCell != null) ? (int) hpCell.getNumericCellValue() : 0;
+
+                    Cell priceCell = row.getCell(3);
+                    double price = (priceCell != null) ? priceCell.getNumericCellValue() : 0.0;
+
+                    Cell availCell = row.getCell(4);
+                    // if empty -> false
+                    boolean avail = false;
+                    if (availCell != null) {
+                        if (availCell.getCellType() == CellType.BOOLEAN) {
+                            avail = availCell.getBooleanCellValue();
+                        } else if (availCell.getCellType() == CellType.NUMERIC) {
+                            avail = (availCell.getNumericCellValue() == 1.0);
+                        }
+                    }
+
+                    add(name, hp, price, avail);
+                    importCnt++;
+
+                } catch (Exception e) {
+                    System.err.println("[FILEDB] Excel failure" + (i + 1) + ": " + e.getMessage());
+                }
+            }
+        }
+        System.out.println("[FILEDB] Excel import OK. Added: " + importCnt);
+        return importCnt;
     }
 }

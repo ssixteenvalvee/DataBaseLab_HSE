@@ -19,7 +19,7 @@ public class Frame extends JFrame {
 
     public Frame() {
         setTitle("Автосалон - Управление БД");
-        setSize(800, 600);
+        setSize(1024, 768);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -64,6 +64,8 @@ public class Frame extends JFrame {
         JButton deleteAllFound = new JButton("Удалить найденные");
         JButton flushBtn = new JButton("Очистить");
         JButton deleteDataBaseBtn = new JButton("Удалить БД");
+        JButton importExcelBtn = new JButton("Импортировать из Excel");
+
         toolBar.add(addBtn);
         toolBar.add(editBtn);
         toolBar.add(deleteBtn);
@@ -74,6 +76,7 @@ public class Frame extends JFrame {
         toolBar.add(deleteAllFound);
         toolBar.add(flushBtn);
         toolBar.add(deleteDataBaseBtn);
+        toolBar.add(importExcelBtn);
 
         // taBle itself
         String[] columns = {"ID", "Название", "Л.С.", "Цена", "В наличии"};
@@ -300,7 +303,26 @@ public class Frame extends JFrame {
             refreshTable();
         });
 
-        refreshTable();
+        importExcelBtn.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Выберите файл Excel (.xlsx)");
+            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("(*.xlsx)", "xlsx"));
+
+            if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+                String path = chooser.getSelectedFile().getAbsolutePath();
+                try {
+                    int count = db.importFromExcel(path);
+                    refreshTable();
+                    JOptionPane.showMessageDialog(this,
+                            "Успешно импортировано: " + count + " записей.",
+                            "Импорт - OK", JOptionPane.INFORMATION_MESSAGE);
+                } catch (IOException ex) {
+                    showError("Ошибка импорта Excel", ex);
+                }
+            }
+        });
+
+        refreshTable(); // constructor end
     }
 
     private void refreshTable() {
